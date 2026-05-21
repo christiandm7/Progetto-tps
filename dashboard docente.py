@@ -11,16 +11,15 @@ import os
 
 docente_bp = Blueprint('docente', __name__)
 
-# ──────────────────────────────────────────────
 # COSTANTI DI CONFIGURAZIONE ISTITUTO
-# ──────────────────────────────────────────────
+
 VOTO_MIN = 1
 VOTO_MAX = 10
 
 
-# ──────────────────────────────────────────────
+
 # HELPER: connessione al database
-# ──────────────────────────────────────────────
+
 def get_db():
     """Restituisce una connessione al database SQLite con row_factory."""
     db_path = os.environ.get('EDUTRACK_DB', 'edutrack.db')
@@ -28,10 +27,8 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-
-# ──────────────────────────────────────────────
 # HELPER: decorator per autenticazione docente
-# ──────────────────────────────────────────────
+
 def richiedi_docente(f):
     """
     Decorator che verifica:
@@ -59,9 +56,9 @@ def richiedi_docente(f):
     return wrapper
 
 
-# ──────────────────────────────────────────────
+
 # FASE 1 – VALIDAZIONE FORMALE (condivisa)
-# ──────────────────────────────────────────────
+
 def valida_data(data_str: str):
     """
     Verifica che la stringa sia nel formato YYYY-MM-DD
@@ -74,9 +71,9 @@ def valida_data(data_str: str):
         return None
 
 
-# ════════════════════════════════════════════════════════════════
+
 #  ENDPOINT 1 – POST /api/docente/valutazioni
-# ════════════════════════════════════════════════════════════════
+
 @docente_bp.route('/api/docente/valutazioni', methods=['POST'])
 @richiedi_docente
 def inserisci_valutazione():
@@ -91,7 +88,7 @@ def inserisci_valutazione():
     docente_id = session['user_id']
     payload = request.get_json(silent=True)
 
-    # ── FASE 1: Validazione formale ───────────────────────────
+    # ── FASE 1: Validazione formale 
     if not payload:
         return jsonify({
             'errore': 'Payload JSON mancante o malformato.',
@@ -149,12 +146,12 @@ def inserisci_valutazione():
     # Campo opzionale
     commento = str(payload.get('commento', '')).strip() or None
 
-    # ── Database: apertura connessione ───────────────────────
+    # ── Database: apertura connessione
     conn = get_db()
     try:
         cur = conn.cursor()
 
-        # ── FASE 2: Controllo appartenenza (Studente → Classe → Docente) ──
+        # ── FASE 2: Controllo appartenenza 
         #
         # Query: verifica che lo studente esista E che la sua classe
         # figuri tra quelle assegnate al docente loggato.
@@ -180,7 +177,7 @@ def inserisci_valutazione():
 
         classe_id = riga_classe['classe_id']
 
-        # ── FASE 3: Controllo competenza disciplinare ─────────────────────
+        # ── FASE 3: Controllo competenza disciplinare 
         #
         # Verifica che esista almeno una riga in docenti_classi_materie
         # con la tripla (docente_id, classe_id, materia).
@@ -202,7 +199,7 @@ def inserisci_valutazione():
                 'codice': 'SUBJECT_NOT_AUTHORIZED'
             }), 403
 
-        # ── INSERT ────────────────────────────────────────────────────────
+        # ── INSERT
         cur.execute("""
             INSERT INTO valutazioni
               (studente_id, docente_id, materia, voto, data, commento)
@@ -229,9 +226,9 @@ def inserisci_valutazione():
     }), 201
 
 
-# ════════════════════════════════════════════════════════════════
+# 
 #  ENDPOINT 2 – POST /api/docente/assenze
-# ════════════════════════════════════════════════════════════════
+# 
 @docente_bp.route('/api/docente/assenze', methods=['POST'])
 @richiedi_docente
 def registra_assenza():
@@ -239,14 +236,14 @@ def registra_assenza():
     Registra un'assenza per uno studente durante una specifica materia.
 
     Flusso di validazione:
-      Fase 1 → campi obbligatori, formato data
-      Fase 2 → lo studente appartiene a una classe del docente
+      Fase 1 campi obbligatori, formato data
+      Fase 2  lo studente appartiene a una classe del docente
       (Fase 3 non richiesta per le assenze: basta l'appartenenza alla classe)
     """
     docente_id = session['user_id']
     payload = request.get_json(silent=True)
 
-    # ── FASE 1: Validazione formale ───────────────────────────
+    # ── FASE 1: Validazione formale 
     if not payload:
         return jsonify({
             'errore': 'Payload JSON mancante o malformato.',
@@ -293,12 +290,12 @@ def registra_assenza():
     except (ValueError, TypeError):
         giustificata = 0
 
-    # ── Database: apertura connessione ───────────────────────
+    # ── Database: apertura connessione
     conn = get_db()
     try:
         cur = conn.cursor()
 
-        # ── FASE 2: Controllo appartenenza (Studente → Classe → Docente) ──
+        # ── FASE 2: Controllo appartenenza 
         #
         # Per le assenze non è necessario verificare la materia (Fase 3):
         # è sufficiente che il docente insegni in quella classe.
@@ -320,7 +317,7 @@ def registra_assenza():
                 'codice': 'STUDENT_NOT_IN_TEACHER_CLASS'
             }), 403
 
-        # ── INSERT ────────────────────────────────────────────────────────
+        # ── INSERT 
         cur.execute("""
             INSERT INTO assenze
               (studente_id, docente_id, materia, data, giustificata)
